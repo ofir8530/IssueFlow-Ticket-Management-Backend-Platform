@@ -18,8 +18,8 @@ export class Ticket {
   @Column('text')
   description: string;
 
-  @Column({ type: 'enum', enum: TicketStatus, default: TicketStatus.TODO })
-  status: TicketStatus;
+  @Column({ type: 'varchar', default: 'OPEN' })
+  status: string;
 
   @Column()
   priority: string;
