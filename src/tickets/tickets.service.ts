@@ -52,6 +52,7 @@ export class TicketsService {
   ) {}
 
   async create(dto: CreateTicketDto, actorId?: string): Promise<Ticket> {
+    
     await this.assertProjectExists(dto.projectId);
     if (dto.assigneeId) {
       await this.assertAssigneeExists(dto.assigneeId);
@@ -326,10 +327,6 @@ export class TicketsService {
     await this.ticketDependenciesRepository.remove(dependency);
   }
 
-  /**
-   * Adding (ticketId blocked by blockerId) creates a cycle if blockerId is
-   * already (directly or indirectly) blocked by ticketId.
-   */
   private async wouldCreateCycle(
     ticketId: string,
     blockerId: string,

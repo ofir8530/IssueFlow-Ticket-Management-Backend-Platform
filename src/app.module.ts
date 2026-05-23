@@ -21,6 +21,7 @@ import { AuditLog } from './audit-logs/entities/audit-log.entity';
 import { Attachment } from './attachments/attachment.entity';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
+import { ScheduleModule } from '@nestjs/schedule';
 
 
 @Module({
@@ -85,6 +86,7 @@ import { join } from 'path';
     CommentsModule,
     AuditLogsModule,
     AuthModule,
+    ScheduleModule.forRoot(),
   ],
    providers: [
     {
