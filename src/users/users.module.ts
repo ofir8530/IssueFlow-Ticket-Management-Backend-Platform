@@ -10,7 +10,7 @@ import { UserExistsConstraint } from './validators/user-exists.validator';
     TypeOrmModule.forFeature([User]) 
   ],
   controllers: [UsersController],
-  providers: [UsersService],
+  providers: [UsersService, UserExistsConstraint],
   exports: [UsersService],
 })
 export class UsersModule {}

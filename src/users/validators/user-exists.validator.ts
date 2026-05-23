@@ -13,9 +13,10 @@ export class UserExistsConstraint implements ValidatorConstraintInterface {
   ) {}
 
   async validate(userId: string) {
+    console.log(`Checking existence for user ID: ${userId}`);
     if (!userId) return false;
-    const user = await this.userRepository.findOneBy({ id: userId });
-    return !!user; // Returns true if user exists, false otherwise
+    console.log('Query result:', User);
+    return !!(await this.userRepository.findOneBy({ id: userId }));
   }
 
   defaultMessage(args: ValidationArguments) {

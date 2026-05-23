@@ -18,7 +18,9 @@ export class TicketsService {
 
   async findAllByProject(projectId: string): Promise<Ticket[]> {
     return await this.ticketsRepository.find({
-      where: { projectId },
+      where: { 
+      project: { id: projectId } },
+      relations: ['project'],
     });
   }
 }
