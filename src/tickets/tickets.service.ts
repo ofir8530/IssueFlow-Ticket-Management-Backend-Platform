@@ -1,11 +1,26 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Ticket } from './entities/ticket.entity';
 import { CreateTicketDto } from './dto/create-ticket.dto';
 import { UpdateTicketDto } from './dto/update-ticket.dto';
 import { ProjectsService } from '../projects/projects.service';
 import { UsersService } from '../users/users.service';
+import { plainToInstance } from 'class-transformer';
+import { validate } from 'class-validator';
+import { parse } from 'csv-parse/sync';
+import { stringify } from 'csv-stringify/sync';
+import {
+  Ticket,
+  TicketPriority,
+  TicketStatus,
+  TicketType,
+} from './entities/ticket.entity';
+
+export interface TicketImportResult {
+  created: number;
+  failed: number;
+  errors: string[];
+}
 
 @Injectable()
 export class TicketsService {
@@ -92,5 +107,98 @@ export class TicketsService {
       .withDeleted() 
       .where('ticket.deletedAt IS NOT NULL')
       .getMany();
+  }
+  async exportToCsv(projectId: string): Promise<string> {
+    if (!projectId) {
+      throw new BadRequestException('projectId query parameter is required');
+    }
+    await this.assertProjectExists(projectId);
+    const tickets = await this.ticketsRepository.find({
+      where: { projectId },
+      order: { title: 'ASC' },
+    });
+    return stringify(
+      tickets.map((t) => ({
+        id: t.id,
+        title: t.title,
+        description: t.description,
+        status: t.status,
+        priority: t.priority,
+        type: t.type,
+        assigneeId: t.assigneeId ?? '',
+      })),
+      {
+        header: true,
+        columns: [
+          'id',
+          'title',
+          'description',
+          'status',
+          'priority',
+          'type',
+          'assigneeId',
+        ],
+      },
+    );
+  }
+  async importFromCsv(
+    projectId: string,
+    fileBuffer: Buffer,
+  ): Promise<TicketImportResult> {
+    if (!projectId) {
+      throw new BadRequestException('projectId form field is required');
+    }
+    if (!fileBuffer?.length) {
+      throw new BadRequestException('CSV file is required');
+    }
+    await this.assertProjectExists(projectId);
+    let rows: Record<string, string>[];
+    try {
+      rows = parse(fileBuffer, {
+        columns: true,
+        skip_empty_lines: true,
+        trim: true,
+      }) as Record<string, string>[];
+    } catch {
+      throw new BadRequestException('Invalid CSV format');
+    }
+    const result: TicketImportResult = { created: 0, failed: 0, errors: [] };
+    for (let i = 0; i < rows.length; i++) {
+      const rowNumber = i + 2; // row 1 = header
+      const row = rows[i];
+      const dto = plainToInstance(CreateTicketDto, {
+        title: row.title,
+        description: row.description,
+        status: row.status as TicketStatus,
+        priority: row.priority as TicketPriority,
+        type: row.type as TicketType,
+        projectId, // from form, not CSV (README)
+        assigneeId: row.assigneeId || undefined,
+        dueDate: row.dueDate || undefined,
+      });
+      const validationErrors = await validate(dto);
+      if (validationErrors.length > 0) {
+        result.failed++;
+        result.errors.push(
+          `Row ${rowNumber}: ${this.formatValidationErrors(validationErrors)}`,
+        );
+        continue;
+      }
+      try {
+        await this.create(dto);
+        result.created++;
+      } catch (err) {
+        result.failed++;
+        result.errors.push(
+          `Row ${rowNumber}: ${err instanceof Error ? err.message : 'Import failed'}`,
+        );
+      }
+    }
+    return result;
+  }
+  private formatValidationErrors(errors: import('class-validator').ValidationError[]): string {
+    return errors
+      .flatMap((e) => Object.values(e.constraints ?? {}))
+      .join('; ');
   }
 }
