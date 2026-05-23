@@ -21,6 +21,12 @@ export interface CommentResponse {
   mentionedUsers: Pick<User, 'id' | 'username' | 'fullName'>[];
 }
 
+export interface PaginatedMentionsResponse {
+  data: CommentResponse[];
+  total: number;
+  page: number;
+}
+
 @Injectable()
 export class CommentsService {
   constructor(
@@ -82,6 +88,44 @@ export class CommentsService {
     await this.assertTicketExists(ticketId);
     const comment = await this.findCommentForTicket(ticketId, commentId);
     await this.commentsRepository.remove(comment);
+  }
+
+  async findMentionsForUser(
+    userId: string,
+    page = 1,
+    pageSize = 10,
+  ): Promise<PaginatedMentionsResponse> {
+    await this.usersService.findOne(userId);
+
+    const safePage = Math.max(1, page);
+    const safePageSize = Math.max(1, pageSize);
+    const skip = (safePage - 1) * safePageSize;
+
+    const baseQuery = () =>
+      this.commentsRepository
+        .createQueryBuilder('comment')
+        .innerJoin(
+          'comment.mentionedUsers',
+          'mentionedUser',
+          'mentionedUser.id = :userId',
+          { userId },
+        );
+
+    const total = await baseQuery().getCount();
+
+    const comments = await baseQuery()
+      .leftJoinAndSelect('comment.mentionedUsers', 'mentionedUsers')
+      .leftJoinAndSelect('comment.ticket', 'ticket')
+      .orderBy('comment.id', 'DESC')
+      .skip(skip)
+      .take(safePageSize)
+      .getMany();
+
+    return {
+      data: comments.map((comment) => this.toResponse(comment)),
+      total,
+      page: safePage,
+    };
   }
 
   /** Parse @username tokens from comment text. */
