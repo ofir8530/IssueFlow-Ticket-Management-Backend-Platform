@@ -6,7 +6,10 @@ import {
   Delete,
   Body,
   Param,
+  Req,
 } from '@nestjs/common';
+import { Request } from 'express';
+import { User } from '../users/entities/user.entity';
 import { CommentsService } from './comments.service';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { UpdateCommentDto } from './dto/update-comment.dto';
@@ -24,8 +27,9 @@ export class CommentsController {
   create(
     @Param('ticketId') ticketId: string,
     @Body() dto: CreateCommentDto,
+    @Req() req: Request & { user: User },
   ) {
-    return this.commentsService.create(ticketId, dto);
+    return this.commentsService.create(ticketId, dto, req.user.id);
   }
 
   @Patch(':commentId')
@@ -33,15 +37,17 @@ export class CommentsController {
     @Param('ticketId') ticketId: string,
     @Param('commentId') commentId: string,
     @Body() dto: UpdateCommentDto,
+    @Req() req: Request & { user: User },
   ) {
-    return this.commentsService.update(ticketId, commentId, dto);
+    return this.commentsService.update(ticketId, commentId, dto, req.user.id);
   }
 
   @Delete(':commentId')
   remove(
     @Param('ticketId') ticketId: string,
     @Param('commentId') commentId: string,
+    @Req() req: Request & { user: User },
   ) {
-    return this.commentsService.remove(ticketId, commentId);
+    return this.commentsService.remove(ticketId, commentId, req.user.id);
   }
 }

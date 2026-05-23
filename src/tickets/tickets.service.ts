@@ -15,6 +15,11 @@ import {
   TicketStatus,
   TicketType,
 } from './entities/ticket.entity';
+import { AuditLogsService } from '../audit-logs/audit-logs.service';
+import {
+  AuditAction,
+  AuditEntityType,
+} from '../audit-logs/entities/audit-log.entity';
 
 export interface TicketImportResult {
   created: number;
@@ -29,9 +34,10 @@ export class TicketsService {
     private readonly ticketsRepository: Repository<Ticket>,
     private readonly projectsService: ProjectsService,
     private readonly usersService: UsersService,
+    private readonly auditLogsService: AuditLogsService,
   ) {}
 
-  async create(dto: CreateTicketDto): Promise<Ticket> {
+  async create(dto: CreateTicketDto, actorId?: string): Promise<Ticket> {
     await this.assertProjectExists(dto.projectId);
     if (dto.assigneeId) {
       await this.assertAssigneeExists(dto.assigneeId);
@@ -41,7 +47,19 @@ export class TicketsService {
       ...dto,
       dueDate: dto.dueDate ? new Date(dto.dueDate) : null,
     });
-    return this.ticketsRepository.save(ticket);
+    const saved = await this.ticketsRepository.save(ticket);
+
+    if (actorId) {
+      await this.auditLogsService.log(
+        actorId,
+        AuditEntityType.TICKET,
+        saved.id,
+        AuditAction.CREATE,
+        { after: this.snapshotTicket(saved) },
+      );
+    }
+
+    return saved;
   }
 
   async findOne(id: string): Promise<Ticket> {
@@ -62,8 +80,13 @@ export class TicketsService {
     return query.getMany();
   }
 
-  async update(id: string, dto: UpdateTicketDto): Promise<Ticket> {
+  async update(
+    id: string,
+    dto: UpdateTicketDto,
+    actorId?: string,
+  ): Promise<Ticket> {
     const ticket = await this.findOne(id);
+    const before = this.snapshotTicket(ticket);
 
     if (dto.projectId) {
       await this.assertProjectExists(dto.projectId);
@@ -79,12 +102,37 @@ export class TicketsService {
       }),
     });
 
-    return this.ticketsRepository.save(ticket);
+    const saved = await this.ticketsRepository.save(ticket);
+
+    if (actorId) {
+      await this.auditLogsService.log(
+        actorId,
+        AuditEntityType.TICKET,
+        saved.id,
+        AuditAction.UPDATE,
+        { before, after: this.snapshotTicket(saved) },
+      );
+    }
+
+    return saved;
   }
 
-  async remove(id: string): Promise<Ticket> {
+  async remove(id: string, actorId?: string): Promise<Ticket> {
     const ticket = await this.findOne(id);
-    return this.ticketsRepository.softRemove(ticket);
+    const before = this.snapshotTicket(ticket);
+    const removed = await this.ticketsRepository.softRemove(ticket);
+
+    if (actorId) {
+      await this.auditLogsService.log(
+        actorId,
+        AuditEntityType.TICKET,
+        removed.id,
+        AuditAction.DELETE,
+        { before },
+      );
+    }
+
+    return removed;
   }
 
   private async assertProjectExists(projectId: string): Promise<void> {
@@ -144,6 +192,7 @@ export class TicketsService {
   async importFromCsv(
     projectId: string,
     fileBuffer: Buffer,
+    actorId?: string,
   ): Promise<TicketImportResult> {
     if (!projectId) {
       throw new BadRequestException('projectId form field is required');
@@ -185,7 +234,7 @@ export class TicketsService {
         continue;
       }
       try {
-        await this.create(dto);
+        await this.create(dto, actorId);
         result.created++;
       } catch (err) {
         result.failed++;
@@ -200,5 +249,20 @@ export class TicketsService {
     return errors
       .flatMap((e) => Object.values(e.constraints ?? {}))
       .join('; ');
+  }
+
+  private snapshotTicket(ticket: Ticket): Record<string, unknown> {
+    return {
+      id: ticket.id,
+      title: ticket.title,
+      description: ticket.description,
+      status: ticket.status,
+      priority: ticket.priority,
+      type: ticket.type,
+      projectId: ticket.projectId,
+      assigneeId: ticket.assigneeId,
+      dueDate: ticket.dueDate,
+      deletedAt: ticket.deletedAt,
+    };
   }
 }

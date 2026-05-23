@@ -5,12 +5,14 @@ import { CommentsController } from './comments.controller';
 import { CommentsService } from './comments.service';
 import { TicketsModule } from '../tickets/tickets.module';
 import { UsersModule } from '../users/users.module';
+import { AuditLogsModule } from '../audit-logs/audit-logs.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Comment]),
-    TicketsModule,
+    forwardRef(() => TicketsModule),
     forwardRef(() => UsersModule),
+    AuditLogsModule,
   ],
   controllers: [CommentsController],
   providers: [CommentsService],

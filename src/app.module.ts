@@ -15,6 +15,8 @@ import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
 import { RevokedToken } from './auth/entities/revoked-token.entity';
+import { AuditLogsModule } from './audit-logs/audit-logs.module';
+import { AuditLog } from './audit-logs/entities/audit-log.entity';
 
 @Module({
   imports: [
@@ -36,7 +38,7 @@ import { RevokedToken } from './auth/entities/revoked-token.entity';
       inject: [ConfigService],
       useFactory: (config: ConfigService) => {
         const dbType = config.get<string>('DB_TYPE');
-        const entities = [User, Project, Ticket, Comment, RevokedToken];
+        const entities = [User, Project, Ticket, Comment, RevokedToken, AuditLog];
 
         if (dbType === 'sqlite') {
           return {
@@ -63,6 +65,7 @@ import { RevokedToken } from './auth/entities/revoked-token.entity';
     ProjectsModule,
     TicketsModule,
     CommentsModule,
+    AuditLogsModule,
     AuthModule,
   ],
    providers: [

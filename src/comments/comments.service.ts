@@ -12,6 +12,11 @@ import { TicketsService } from '../tickets/tickets.service';
 import { UsersService } from '../users/users.service';
 import { extractMentions } from './utils/parse-mentions.helper';
 import { User } from '../users/entities/user.entity';
+import { AuditLogsService } from '../audit-logs/audit-logs.service';
+import {
+  AuditAction,
+  AuditEntityType,
+} from '../audit-logs/entities/audit-log.entity';
 
 export interface CommentResponse {
   id: string;
@@ -34,6 +39,7 @@ export class CommentsService {
     private readonly commentsRepository: Repository<Comment>,
     private readonly ticketsService: TicketsService,
     private readonly usersService: UsersService,
+    private readonly auditLogsService: AuditLogsService,
   ) {}
 
   async findAllByTicket(ticketId: string): Promise<CommentResponse[]> {
@@ -51,6 +57,7 @@ export class CommentsService {
   async create(
     ticketId: string,
     dto: CreateCommentDto,
+    actorId?: string,
   ): Promise<CommentResponse> {
     await this.assertTicketExists(ticketId);
 
@@ -64,30 +71,70 @@ export class CommentsService {
     });
 
     const saved = await this.commentsRepository.save(comment);
-    return this.toResponse(await this.loadCommentWithMentions(saved.id));
+    const loaded = await this.loadCommentWithMentions(saved.id);
+
+    const auditActorId = actorId ?? dto.authorId;
+    await this.auditLogsService.log(
+      auditActorId,
+      AuditEntityType.COMMENT,
+      loaded.id,
+      AuditAction.CREATE,
+      { after: this.snapshotComment(loaded) },
+    );
+
+    return this.toResponse(loaded);
   }
 
   async update(
     ticketId: string,
     commentId: string,
     dto: UpdateCommentDto,
+    actorId?: string,
   ): Promise<CommentResponse> {
     await this.assertTicketExists(ticketId);
 
     const comment = await this.findCommentForTicket(ticketId, commentId);
+    const before = this.snapshotComment(comment);
     const mentionedUsers = await this.resolveMentionedUsers(dto.content);
 
     comment.content = dto.content;
     comment.mentionedUsers = mentionedUsers;
 
     await this.commentsRepository.save(comment);
-    return this.toResponse(await this.loadCommentWithMentions(comment.id));
+    const loaded = await this.loadCommentWithMentions(comment.id);
+
+    if (actorId) {
+      await this.auditLogsService.log(
+        actorId,
+        AuditEntityType.COMMENT,
+        loaded.id,
+        AuditAction.UPDATE,
+        { before, after: this.snapshotComment(loaded) },
+      );
+    }
+
+    return this.toResponse(loaded);
   }
 
-  async remove(ticketId: string, commentId: string): Promise<void> {
+  async remove(
+    ticketId: string,
+    commentId: string,
+    actorId?: string,
+  ): Promise<void> {
     await this.assertTicketExists(ticketId);
     const comment = await this.findCommentForTicket(ticketId, commentId);
+    const before = this.snapshotComment(comment);
     await this.commentsRepository.remove(comment);
+
+    if (actorId) {
+      await this.auditLogsService.log(
+        actorId,
+        AuditEntityType.COMMENT,
+        comment.id,
+        AuditAction.DELETE,
+        { before },
+      );
+    }
   }
 
   async findMentionsForUser(
@@ -202,6 +249,16 @@ export class CommentsService {
         username: user.username,
         fullName: user.fullName,
       })),
+    };
+  }
+
+  private snapshotComment(comment: Comment): Record<string, unknown> {
+    return {
+      id: comment.id,
+      ticketId: comment.ticketId,
+      authorId: comment.authorId,
+      content: comment.content,
+      mentionedUserIds: (comment.mentionedUsers ?? []).map((user) => user.id),
     };
   }
 }

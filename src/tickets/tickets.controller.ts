@@ -11,7 +11,10 @@ import {
   UseInterceptors,
   BadRequestException,
   StreamableFile,
+  Req,
 } from '@nestjs/common';
+import { Request } from 'express';
+import { User } from '../users/entities/user.entity';
 import { TicketsService } from './tickets.service';
 import { CreateTicketDto } from './dto/create-ticket.dto';
 import { UpdateTicketDto } from './dto/update-ticket.dto';
@@ -24,8 +27,11 @@ export class TicketsController {
   constructor(private readonly ticketsService: TicketsService) {}
 
   @Post()
-  create(@Body() dto: CreateTicketDto) {
-    return this.ticketsService.create(dto);
+  create(
+    @Body() dto: CreateTicketDto,
+    @Req() req: Request & { user: User },
+  ) {
+    return this.ticketsService.create(dto, req.user.id);
   }
 
   @Get('deleted')
@@ -51,12 +57,13 @@ export class TicketsController {
   async importTickets(
     @UploadedFile() file: Express.Multer.File,
     @Body('projectId') projectId: string,
+    @Req() req: Request & { user: User },
   ): Promise<{ created: number; failed: number; errors: string[] }> {
     if (!file) {
       throw new BadRequestException('CSV file is required');
     }
 
-    return this.ticketsService.importFromCsv(projectId, file.buffer);
+    return this.ticketsService.importFromCsv(projectId, file.buffer, req.user.id);
   }
 
   @Get()
@@ -73,12 +80,16 @@ export class TicketsController {
   update(
     @Param('ticketId') ticketId: string,
     @Body() dto: UpdateTicketDto,
+    @Req() req: Request & { user: User },
   ) {
-    return this.ticketsService.update(ticketId, dto);
+    return this.ticketsService.update(ticketId, dto, req.user.id);
   }
 
   @Delete(':ticketId')
-  remove(@Param('ticketId') ticketId: string) {
-    return this.ticketsService.remove(ticketId);
+  remove(
+    @Param('ticketId') ticketId: string,
+    @Req() req: Request & { user: User },
+  ) {
+    return this.ticketsService.remove(ticketId, req.user.id);
   }
 }
