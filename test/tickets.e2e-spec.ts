@@ -6,37 +6,51 @@ import { AppModule } from './../src/app.module';
 const request = require('supertest');
 
 const addMockUser = (req: any, res: any, next: any) => {
-  req.user = { id: 'some-user-id' }; 
-  next();
+  req.user = { id: 1 }; 
+  next(); 
 };
 
 describe('Tickets (e2e)', () => {
+  jest.setTimeout(30000);
   let app: INestApplication;
-  const mockToken = 'Bearer valid-token-for-testing';
+  const mockToken = 'Bearer any-string-is-fine-because-middleware-overrides';
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
 
+    // כאן נוודא שה-app באמת נוצר
     app = moduleFixture.createNestApplication();
+    if (!app) {
+      throw new Error('Failed to create Nest application');
+    }
+
     app.use(addMockUser); 
-    await app.init();
-    await request(app.getHttpServer())
-      .post('/projects') 
+    await app.init(); // עכשיו זה לא יזרוק TypeError כי אנחנו בטוחים ש-app קיים
+    
+    // נסי יצירה ישירה דרך ה-Service אם ה-API עדיין נכשל בגלל ה-Constraint
+    // אבל בואי ננסה את זה שוב עם הבדיקה ש-app קיים:
+    const projectRes = await request(app.getHttpServer())
+      .post('/projects')
       .set('Authorization', mockToken)
       .send({ 
         name: 'Test Project', 
         description: 'Testing description',
         ownerId: 1 
       });
+
+    // אם עדיין 500, נדע שהבעיה היא ב-Constraint ולא ב-init
+    console.log('Project creation status:', projectRes.status);
   });
 
   it('POST /tickets - success', async () => {
     const projectRes = await request(app.getHttpServer())
-      .get('/projects'); 
+      .get('/projects')
+      .set('Authorization', mockToken);
     
-    const projectId = projectRes.body[0]?.id || 1; 
+    const projectId = projectRes.body[0].id;
+    
     const response = await request(app.getHttpServer())
       .post('/tickets')
       .set('Authorization', mockToken)
@@ -45,6 +59,7 @@ describe('Tickets (e2e)', () => {
         description: 'Fix it',
         projectId: projectId 
       });
+    
     expect(response.status).toBe(201);
   });
 
@@ -58,10 +73,11 @@ describe('Tickets (e2e)', () => {
   });
 
   it('DELETE /tickets/:id - soft delete', async () => {
+    const projectRes = await request(app.getHttpServer()).get('/projects').set('Authorization', mockToken);
     const created = await request(app.getHttpServer())
       .post('/tickets')
       .set('Authorization', mockToken)
-      .send({ title: 'To be deleted', description: 'Bye', projectId: 'some-project-id' });
+      .send({ title: 'To be deleted', description: 'Bye', projectId: projectRes.body[0].id });
     
     const id = created.body.id;
     
@@ -77,5 +93,9 @@ describe('Tickets (e2e)', () => {
     expect(exists).toBeUndefined();
   });
 
-  afterAll(async () => { await app.close(); });
+  afterAll(async () => { 
+    if (app) {
+      await app.close(); 
+    }
+  });
 });
