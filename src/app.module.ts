@@ -18,6 +18,10 @@ import { RolesGuard } from './auth/guards/roles.guard';
 import { RevokedToken } from './auth/entities/revoked-token.entity';
 import { AuditLogsModule } from './audit-logs/audit-logs.module';
 import { AuditLog } from './audit-logs/entities/audit-log.entity';
+import { Attachment } from './attachments/attachment.entity';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { join } from 'path';
+
 
 @Module({
   imports: [
@@ -34,6 +38,10 @@ import { AuditLog } from './audit-logs/entities/audit-log.entity';
         JWT_EXPIRES_IN: Joi.number().default(3600),
       }),
     }),
+    ServeStaticModule.forRoot({
+      rootPath: join(__dirname, '..', 'uploads'), 
+      serveRoot: '/uploads',
+    }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -47,6 +55,7 @@ import { AuditLog } from './audit-logs/entities/audit-log.entity';
           Comment,
           RevokedToken,
           AuditLog,
+          Attachment,
         ];
 
         if (dbType === 'sqlite') {

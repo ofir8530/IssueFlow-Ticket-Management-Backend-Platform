@@ -8,6 +8,8 @@ import {
 } from 'typeorm';
 import { Project } from '../../projects/entities/project.entity';
 import { User } from '../../users/entities/user.entity';
+import { OneToMany } from 'typeorm';
+import { Attachment } from '../../attachments/attachment.entity';
 
 export enum TicketStatus {
   TODO = 'TODO',
@@ -71,9 +73,9 @@ export class Ticket {
   @Column({ nullable: true })
   assigneeId: string | null;
 
-  @ManyToOne(() => Project, (project) => project.tickets, {
-    onDelete: 'CASCADE',
-  })
+  @OneToMany(() => Attachment, (attachment) => attachment.ticket)
+  attachments: Attachment[];
+
   @JoinColumn({ name: 'projectId' })
   project: Project;
 

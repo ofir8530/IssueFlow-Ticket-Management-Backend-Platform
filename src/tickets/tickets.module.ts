@@ -8,6 +8,8 @@ import { ProjectsModule } from '../projects/projects.module';
 import { UsersModule } from '../users/users.module';
 import { MulterModule } from '@nestjs/platform-express';
 import { AuditLogsModule } from '../audit-logs/audit-logs.module';
+import { Attachment } from '../attachments/attachment.entity';
+import {AttachmentsModule} from '../attachments/attachments.module'
 
 @Module({
   imports: [
@@ -18,6 +20,8 @@ import { AuditLogsModule } from '../audit-logs/audit-logs.module';
     forwardRef(() => ProjectsModule),
     forwardRef(() => UsersModule),
     AuditLogsModule,
+    AttachmentsModule,
+    Attachment,
   ],
   controllers: [TicketsController],
   providers: [TicketsService],
