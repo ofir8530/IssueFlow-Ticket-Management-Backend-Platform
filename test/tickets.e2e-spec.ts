@@ -20,17 +20,14 @@ describe('Tickets (e2e)', () => {
       imports: [AppModule],
     }).compile();
 
-    // כאן נוודא שה-app באמת נוצר
     app = moduleFixture.createNestApplication();
     if (!app) {
       throw new Error('Failed to create Nest application');
     }
 
     app.use(addMockUser); 
-    await app.init(); // עכשיו זה לא יזרוק TypeError כי אנחנו בטוחים ש-app קיים
-    
-    // נסי יצירה ישירה דרך ה-Service אם ה-API עדיין נכשל בגלל ה-Constraint
-    // אבל בואי ננסה את זה שוב עם הבדיקה ש-app קיים:
+    await app.init();
+   
     const projectRes = await request(app.getHttpServer())
       .post('/projects')
       .set('Authorization', mockToken)
@@ -40,7 +37,6 @@ describe('Tickets (e2e)', () => {
         ownerId: 1 
       });
 
-    // אם עדיין 500, נדע שהבעיה היא ב-Constraint ולא ב-init
     console.log('Project creation status:', projectRes.status);
   });
 
