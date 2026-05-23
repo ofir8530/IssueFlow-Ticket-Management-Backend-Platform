@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ConflictException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CreateTicketDto } from './dto/create-ticket.dto';
@@ -20,6 +25,13 @@ import {
   AuditAction,
   AuditEntityType,
 } from '../audit-logs/entities/audit-log.entity';
+import { TicketDependency } from './entities/ticket-dependency.entity';
+
+export interface TicketDependencySummary {
+  id: string;
+  title: string;
+  status: TicketStatus;
+}
 
 export interface TicketImportResult {
   created: number;
@@ -32,6 +44,8 @@ export class TicketsService {
   constructor(
     @InjectRepository(Ticket)
     private readonly ticketsRepository: Repository<Ticket>,
+    @InjectRepository(TicketDependency)
+    private readonly ticketDependenciesRepository: Repository<TicketDependency>,
     private readonly projectsService: ProjectsService,
     private readonly usersService: UsersService,
     private readonly auditLogsService: AuditLogsService,
@@ -245,6 +259,119 @@ export class TicketsService {
     }
     return result;
   }
+  async addDependency(
+    ticketId: string,
+    blockedBy: string,
+  ): Promise<TicketDependency> {
+    const blockerId = blockedBy;
+    await this.findOne(ticketId);
+    await this.findOne(blockerId);
+
+    if (ticketId === blockerId) {
+      throw new BadRequestException('A ticket cannot block itself');
+    }
+
+    const existing = await this.ticketDependenciesRepository.findOne({
+      where: { ticketId, blockerId },
+    });
+    if (existing) {
+      throw new ConflictException('Dependency already exists');
+    }
+
+    if (await this.wouldCreateCycle(ticketId, blockerId)) {
+      throw new BadRequestException('Circular dependency detected');
+    }
+
+    const dependency = this.ticketDependenciesRepository.create({
+      ticketId,
+      blockerId,
+    });
+
+    return this.ticketDependenciesRepository.save(dependency);
+  }
+
+  async listDependencies(
+    ticketId: string,
+  ): Promise<TicketDependencySummary[]> {
+    await this.findOne(ticketId);
+
+    const dependencies = await this.ticketDependenciesRepository
+      .createQueryBuilder('dependency')
+      .leftJoinAndSelect('dependency.blocker', 'blocker')
+      .where('dependency.ticketId = :ticketId', { ticketId })
+      .orderBy('blocker.title', 'ASC')
+      .getMany();
+
+    return dependencies.map((dependency) => ({
+      id: dependency.blocker.id,
+      title: dependency.blocker.title,
+      status: dependency.blocker.status,
+    }));
+  }
+
+  async removeDependency(ticketId: string, blockerId: string): Promise<void> {
+    await this.findOne(ticketId);
+    await this.findOne(blockerId);
+
+    const dependency = await this.ticketDependenciesRepository.findOne({
+      where: { ticketId, blockerId },
+    });
+
+    if (!dependency) {
+      throw new NotFoundException(
+        `Dependency on blocker ${blockerId} not found for ticket ${ticketId}`,
+      );
+    }
+
+    await this.ticketDependenciesRepository.remove(dependency);
+  }
+
+  /**
+   * Adding (ticketId blocked by blockerId) creates a cycle if blockerId is
+   * already (directly or indirectly) blocked by ticketId.
+   */
+  private async wouldCreateCycle(
+    ticketId: string,
+    blockerId: string,
+  ): Promise<boolean> {
+    return this.isBlockedBy(blockerId, ticketId);
+  }
+
+  private async isBlockedBy(
+    ticketId: string,
+    blockerId: string,
+    visited = new Set<string>(),
+  ): Promise<boolean> {
+    if (ticketId === blockerId) {
+      return true;
+    }
+
+    if (visited.has(ticketId)) {
+      return false;
+    }
+    visited.add(ticketId);
+
+    const dependencies = await this.ticketDependenciesRepository.find({
+      where: { ticketId },
+    });
+
+    for (const dependency of dependencies) {
+      if (dependency.blockerId === blockerId) {
+        return true;
+      }
+      const nested = await this.isBlockedBy(
+        dependency.blockerId,
+        blockerId,
+        visited,
+      );
+      if (nested) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
   private formatValidationErrors(errors: import('class-validator').ValidationError[]): string {
     return errors
       .flatMap((e) => Object.values(e.constraints ?? {}))

@@ -19,6 +19,7 @@ import { TicketsService } from './tickets.service';
 import { CreateTicketDto } from './dto/create-ticket.dto';
 import { UpdateTicketDto } from './dto/update-ticket.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { AddTicketDependencyDto } from './dto/add-ticket-dependency.dto';
 
 
 
@@ -69,6 +70,27 @@ export class TicketsController {
   @Get()
   findAll(@Query('projectId') projectId?: string) {
     return this.ticketsService.findAll(projectId);
+  }
+
+  @Post(':ticketId/dependencies')
+  addDependency(
+    @Param('ticketId') ticketId: string,
+    @Body() dto: AddTicketDependencyDto,
+  ) {
+    return this.ticketsService.addDependency(ticketId, dto.blockedBy);
+  }
+
+  @Get(':ticketId/dependencies')
+  listDependencies(@Param('ticketId') ticketId: string) {
+    return this.ticketsService.listDependencies(ticketId);
+  }
+
+  @Delete(':ticketId/dependencies/:blockerId')
+  removeDependency(
+    @Param('ticketId') ticketId: string,
+    @Param('blockerId') blockerId: string,
+  ) {
+    return this.ticketsService.removeDependency(ticketId, blockerId);
   }
 
   @Get(':ticketId')

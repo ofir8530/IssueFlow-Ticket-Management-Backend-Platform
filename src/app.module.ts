@@ -10,6 +10,7 @@ import { Comment } from './comments/entities/comment.entity';
 import { User } from './users/entities/user.entity';
 import { Project } from './projects/entities/project.entity';
 import { Ticket } from './tickets/entities/ticket.entity';
+import { TicketDependency } from './tickets/entities/ticket-dependency.entity';
 import { AuthModule } from './auth/auth.module';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
@@ -38,7 +39,15 @@ import { AuditLog } from './audit-logs/entities/audit-log.entity';
       inject: [ConfigService],
       useFactory: (config: ConfigService) => {
         const dbType = config.get<string>('DB_TYPE');
-        const entities = [User, Project, Ticket, Comment, RevokedToken, AuditLog];
+        const entities = [
+          User,
+          Project,
+          Ticket,
+          TicketDependency,
+          Comment,
+          RevokedToken,
+          AuditLog,
+        ];
 
         if (dbType === 'sqlite') {
           return {
