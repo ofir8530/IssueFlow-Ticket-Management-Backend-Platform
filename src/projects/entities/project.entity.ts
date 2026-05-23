@@ -5,6 +5,7 @@ import {
   ManyToOne,
   OneToMany,
   JoinColumn,
+  DeleteDateColumn,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 import { Ticket } from '../../tickets/entities/ticket.entity';
@@ -22,6 +23,9 @@ export class Project {
 
   @Column()
   ownerId: string;
+
+  @DeleteDateColumn()
+  deletedAt: Date;
 
   @ManyToOne(() => User)
   @JoinColumn({ name: 'ownerId' })
