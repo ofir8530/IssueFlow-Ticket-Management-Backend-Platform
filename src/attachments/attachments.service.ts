@@ -15,8 +15,8 @@ export class AttachmentsService {
     const attachment = this.repo.create({
       filename: file.originalname,
       path: file.path,
-      mimetype: file.mimetype, // הוספתי
-      size: file.size,         // הוספתי
+      mimetype: file.mimetype, 
+      size: file.size,         
       ticket: { id: ticketId } as any,
     });
     return this.repo.save(attachment);
@@ -27,7 +27,6 @@ export class AttachmentsService {
   }
 
   async deleteAttachment(attachmentId: string) {
-    // השתמשתי ב-repo במקום ב-attachmentRepository
     const attachment = await this.repo.findOneBy({ id: attachmentId });
     if (!attachment) throw new NotFoundException('Attachment not found');
 
