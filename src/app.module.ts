@@ -8,6 +8,7 @@ import { TicketsModule } from './tickets/tickets.module';
 import { User } from './users/entities/user.entity';
 import { Project } from './projects/entities/project.entity';
 import { Ticket } from './tickets/entities/ticket.entity';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
@@ -20,6 +21,8 @@ import { Ticket } from './tickets/entities/ticket.entity';
         DB_USER: Joi.string().when('DB_TYPE', { is: 'mysql', then: Joi.required() }),
         DB_PASS: Joi.string().when('DB_TYPE', { is: 'mysql', then: Joi.required() }),
         DB_NAME: Joi.string().when('DB_TYPE', { is: 'mysql', then: Joi.required() }),
+        JWT_SECRET: Joi.string().required(),
+        JWT_EXPIRES_IN: Joi.number().default(3600),
       }),
     }),
     TypeOrmModule.forRootAsync({
@@ -52,6 +55,7 @@ import { Ticket } from './tickets/entities/ticket.entity';
     UsersModule,
     ProjectsModule,
     TicketsModule,
+    AuthModule,
   ],
 })
 export class AppModule {}
