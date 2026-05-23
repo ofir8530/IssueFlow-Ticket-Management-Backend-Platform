@@ -17,13 +17,17 @@ export class ProjectsService {
   }
 
   findAll() {
-    return this.repo.find({ relations: ['owner'] });
+    return this.repo.find();
   }
 
   async findOne(id: string) {
-    const project = await this.repo.findOne({ where: { id }, relations: ['owner'] });
+    const project = await this.repo.findOneBy({ id });
     if (!project) throw new NotFoundException(`Project ${id} not found`);
     return project;
+  }
+
+  async exists(id: string): Promise<boolean> {
+    return this.repo.existsBy({ id });
   }
 
   async update(id: string, dto: UpdateProjectDto) {

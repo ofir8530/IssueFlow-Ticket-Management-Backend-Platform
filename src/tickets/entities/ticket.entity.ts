@@ -18,8 +18,12 @@ export class Ticket {
   @Column('text')
   description: string;
 
-  @Column({ type: 'varchar', default: 'OPEN' })
-  status: string;
+  @Column({
+    type: 'simple-enum',
+    enum: TicketStatus,
+    default: TicketStatus.TODO,
+  })
+  status: TicketStatus;
 
   @Column()
   priority: string;
@@ -27,7 +31,9 @@ export class Ticket {
   @Column()
   projectId: string;
 
-  @ManyToOne(() => Project, (project) => project.id, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Project, (project) => project.tickets, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'projectId' })
   project: Project;
 }
