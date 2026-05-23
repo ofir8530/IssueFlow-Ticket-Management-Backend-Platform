@@ -5,6 +5,8 @@ import { UsersModule } from './users/users.module';
 import * as Joi from 'joi';
 import { ProjectsModule } from './projects/projects.module';
 import { TicketsModule } from './tickets/tickets.module';
+import { CommentsModule } from './comments/comments.module';
+import { Comment } from './comments/entities/comment.entity';
 import { User } from './users/entities/user.entity';
 import { Project } from './projects/entities/project.entity';
 import { Ticket } from './tickets/entities/ticket.entity';
@@ -34,7 +36,7 @@ import { RevokedToken } from './auth/entities/revoked-token.entity';
       inject: [ConfigService],
       useFactory: (config: ConfigService) => {
         const dbType = config.get<string>('DB_TYPE');
-        const entities = [User, Project, Ticket, RevokedToken];
+        const entities = [User, Project, Ticket, Comment, RevokedToken];
 
         if (dbType === 'sqlite') {
           return {
@@ -60,6 +62,7 @@ import { RevokedToken } from './auth/entities/revoked-token.entity';
     UsersModule,
     ProjectsModule,
     TicketsModule,
+    CommentsModule,
     AuthModule,
   ],
    providers: [

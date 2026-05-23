@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { User } from './entities/user.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -45,5 +45,12 @@ async update(id: string, dto: UpdateUserDto) {
     where: { username },
     select: ['id', 'username', 'email', 'fullName', 'role', 'password'],
   });
+  }
+
+  findByUsernames(usernames: string[]) {
+    if (usernames.length === 0) {
+      return [];
+    }
+    return this.repo.find({ where: { username: In(usernames) } });
   }
 }
