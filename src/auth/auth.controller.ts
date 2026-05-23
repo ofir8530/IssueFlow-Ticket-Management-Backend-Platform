@@ -12,11 +12,15 @@ import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { User } from '../users/entities/user.entity';
+import { Public } from './decorators/public.decorator';
+
+
 
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
 
+  @Public()
   @Post('login')
   @HttpCode(200)
   login(@Body() dto: LoginDto) {
@@ -24,7 +28,6 @@ export class AuthController {
   }
 
   @Get('me')
-  @UseGuards(JwtAuthGuard)
   me(@Req() req: Request & { user: User }) {
     return req.user;
   }
