@@ -10,6 +10,7 @@ import { Project } from '../../projects/entities/project.entity';
 import { User } from '../../users/entities/user.entity';
 import { OneToMany } from 'typeorm';
 import { Attachment } from '../../attachments/attachment.entity';
+import { Expose } from 'class-transformer';
 
 export enum TicketStatus {
   TODO = 'TODO',
@@ -63,6 +64,12 @@ export class Ticket {
 
   @Column({ type: 'datetime', nullable: true })
   dueDate: Date | null;
+
+  @Expose()
+  get isOverdue(): boolean {
+    if (!this.dueDate) return false;
+    return this.dueDate < new Date();
+  }
 
   @DeleteDateColumn()
   deletedAt: Date | null;

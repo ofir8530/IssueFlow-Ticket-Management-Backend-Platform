@@ -15,6 +15,7 @@ import {
   ParseFilePipe,
   MaxFileSizeValidator,
   FileTypeValidator,
+  ClassSerializerInterceptor,
 } from '@nestjs/common';
 import { Request } from 'express';
 import { User } from '../users/entities/user.entity';
@@ -27,6 +28,7 @@ import { diskStorage } from 'multer';
 import { AttachmentsService } from '../attachments/attachments.service';
 
 @Controller('tickets')
+@UseInterceptors(ClassSerializerInterceptor)
 export class TicketsController {
   constructor(
     private readonly ticketsService: TicketsService,
