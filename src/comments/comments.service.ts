@@ -10,7 +10,7 @@ import { CreateCommentDto } from './dto/create-comment.dto';
 import { UpdateCommentDto } from './dto/update-comment.dto';
 import { TicketsService } from '../tickets/tickets.service';
 import { UsersService } from '../users/users.service';
-import { extractMentionedUsernames } from './utils/parse-mentions.helper';
+import { extractMentions } from './utils/parse-mentions.helper';
 import { User } from '../users/entities/user.entity';
 
 export interface CommentResponse {
@@ -48,7 +48,7 @@ export class CommentsService {
   ): Promise<CommentResponse> {
     await this.assertTicketExists(ticketId);
 
-    const mentionedUsers = await this.resolveMentions(dto.content);
+    const mentionedUsers = await this.resolveMentionedUsers(dto.content);
 
     const comment = this.commentsRepository.create({
       ticketId,
@@ -58,9 +58,7 @@ export class CommentsService {
     });
 
     const saved = await this.commentsRepository.save(comment);
-    return this.toResponse(
-      await this.findCommentWithMentions(saved.id),
-    );
+    return this.toResponse(await this.loadCommentWithMentions(saved.id));
   }
 
   async update(
@@ -71,39 +69,39 @@ export class CommentsService {
     await this.assertTicketExists(ticketId);
 
     const comment = await this.findCommentForTicket(ticketId, commentId);
-    const mentionedUsers = await this.resolveMentions(dto.content);
+    const mentionedUsers = await this.resolveMentionedUsers(dto.content);
 
     comment.content = dto.content;
     comment.mentionedUsers = mentionedUsers;
 
     await this.commentsRepository.save(comment);
-    return this.toResponse(
-      await this.findCommentWithMentions(comment.id),
-    );
+    return this.toResponse(await this.loadCommentWithMentions(comment.id));
   }
 
   async remove(ticketId: string, commentId: string): Promise<void> {
     await this.assertTicketExists(ticketId);
-
     const comment = await this.findCommentForTicket(ticketId, commentId);
     await this.commentsRepository.remove(comment);
   }
 
-  private async assertTicketExists(ticketId: string): Promise<void> {
-    await this.ticketsService.findOne(ticketId);
+  /** Parse @username tokens from comment text. */
+  private extractMentionsFromContent(content: string): string[] {
+    return extractMentions(content);
   }
 
-  private async resolveMentions(content: string): Promise<User[]> {
-    const usernames = extractMentionedUsernames(content);
+  /**
+   * Resolve usernames to User entities and fail if any mention is invalid.
+   */
+  private async resolveMentionedUsers(content: string): Promise<User[]> {
+    const usernames = this.extractMentionsFromContent(content);
+
     if (usernames.length === 0) {
       return [];
     }
 
     const users = await this.usersService.findByUsernames(usernames);
-    const foundUsernames = new Set(users.map((user) => user.username));
-    const missing = usernames.filter(
-      (username) => !foundUsernames.has(username),
-    );
+    const found = new Set(users.map((user) => user.username));
+    const missing = usernames.filter((username) => !found.has(username));
 
     if (missing.length > 0) {
       throw new BadRequestException(
@@ -112,6 +110,10 @@ export class CommentsService {
     }
 
     return users;
+  }
+
+  private async assertTicketExists(ticketId: string): Promise<void> {
+    await this.ticketsService.findOne(ticketId);
   }
 
   private async findCommentForTicket(
@@ -132,7 +134,7 @@ export class CommentsService {
     return comment;
   }
 
-  private async findCommentWithMentions(commentId: string): Promise<Comment> {
+  private async loadCommentWithMentions(commentId: string): Promise<Comment> {
     const comment = await this.commentsRepository.findOne({
       where: { id: commentId },
       relations: ['mentionedUsers'],
