@@ -1,10 +1,30 @@
-import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn } from 'typeorm';
+import {
+  Entity,
+  Column,
+  PrimaryGeneratedColumn,
+  ManyToOne,
+  JoinColumn,
+  DeleteDateColumn,
+} from 'typeorm';
 import { Project } from '../../projects/entities/project.entity';
+import { User } from '../../users/entities/user.entity';
 
 export enum TicketStatus {
   TODO = 'TODO',
   IN_PROGRESS = 'IN_PROGRESS',
   DONE = 'DONE',
+}
+
+export enum TicketPriority {
+  LOW = 'LOW',
+  MEDIUM = 'MEDIUM',
+  HIGH = 'HIGH',
+}
+
+export enum TicketType {
+  BUG = 'BUG',
+  FEATURE = 'FEATURE',
+  TASK = 'TASK',
 }
 
 @Entity('tickets')
@@ -25,8 +45,25 @@ export class Ticket {
   })
   status: TicketStatus;
 
-  @Column()
-  priority: string;
+  @Column({
+    type: 'simple-enum',
+    enum: TicketPriority,
+    default: TicketPriority.MEDIUM,
+  })
+  priority: TicketPriority;
+
+  @Column({
+    type: 'simple-enum',
+    enum: TicketType,
+    default: TicketType.TASK,
+  })
+  type: TicketType;
+
+  @Column({ type: 'datetime', nullable: true })
+  dueDate: Date | null;
+
+  @DeleteDateColumn()
+  deletedAt: Date | null;
 
   @Column()
   projectId: string;
@@ -39,4 +76,8 @@ export class Ticket {
   })
   @JoinColumn({ name: 'projectId' })
   project: Project;
+
+  @ManyToOne(() => User, { nullable: true })
+  @JoinColumn({ name: 'assigneeId' })
+  assignee: User | null;
 }

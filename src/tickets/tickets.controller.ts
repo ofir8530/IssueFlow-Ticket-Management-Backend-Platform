@@ -1,19 +1,51 @@
-import { Controller, Post, Get, Body, Param, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Delete,
+  Body,
+  Param,
+  Query,
+} from '@nestjs/common';
 import { TicketsService } from './tickets.service';
 import { CreateTicketDto } from './dto/create-ticket.dto';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { UpdateTicketDto } from './dto/update-ticket.dto';
 
 @Controller('tickets')
 export class TicketsController {
   constructor(private readonly ticketsService: TicketsService) {}
 
   @Post()
-  async create(@Body() createTicketDto: CreateTicketDto) {
-    return await this.ticketsService.create(createTicketDto);
+  create(@Body() dto: CreateTicketDto) {
+    return this.ticketsService.create(dto);
   }
 
-  @Get('project/:projectId')
-  async findAllByProject(@Param('projectId') projectId: string) {
-    return await this.ticketsService.findAllByProject(projectId);
+  @Get('deleted')
+  findDeleted() {
+    return this.ticketsService.findDeleted();
+  }
+
+  @Get()
+  findAll(@Query('projectId') projectId?: string) {
+    return this.ticketsService.findAll(projectId);
+  }
+
+  @Get(':ticketId')
+  findOne(@Param('ticketId') ticketId: string) {
+    return this.ticketsService.findOne(ticketId);
+  }
+
+  @Patch(':ticketId')
+  update(
+    @Param('ticketId') ticketId: string,
+    @Body() dto: UpdateTicketDto,
+  ) {
+    return this.ticketsService.update(ticketId, dto);
+  }
+
+  @Delete(':ticketId')
+  remove(@Param('ticketId') ticketId: string) {
+    return this.ticketsService.remove(ticketId);
   }
 }

@@ -4,10 +4,16 @@ import { TicketsService } from './tickets.service';
 import { TicketsController } from './tickets.controller';
 import { Ticket } from './entities/ticket.entity';
 import { ProjectsModule } from '../projects/projects.module';
+import { UsersModule } from '../users/users.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Ticket]), ProjectsModule],
+  imports: [
+    TypeOrmModule.forFeature([Ticket]),
+    ProjectsModule,
+    UsersModule,
+  ],
   controllers: [TicketsController],
   providers: [TicketsService],
+  exports: [TicketsService],
 })
 export class TicketsModule {}

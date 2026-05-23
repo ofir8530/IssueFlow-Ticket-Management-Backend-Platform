@@ -1,5 +1,17 @@
-import { IsString, IsNotEmpty, IsEnum, IsUUID } from 'class-validator';
-import { TicketStatus } from '../entities/ticket.entity';
+import {
+  IsString,
+  IsNotEmpty,
+  IsEnum,
+  IsUUID,
+  IsOptional,
+  IsDateString,
+} from 'class-validator';
+import {
+  TicketStatus,
+  TicketPriority,
+  TicketType,
+} from '../entities/ticket.entity';
+import { UserExists } from '../../users/validators/user-exists.decorator';
 
 export class CreateTicketDto {
   @IsString()
@@ -7,15 +19,28 @@ export class CreateTicketDto {
   title: string;
 
   @IsString()
+  @IsNotEmpty()
   description: string;
 
   @IsEnum(TicketStatus)
   status: TicketStatus;
 
-  @IsString()
-  priority: string;
+  @IsEnum(TicketPriority)
+  priority: TicketPriority;
+
+  @IsEnum(TicketType)
+  type: TicketType;
 
   @IsUUID()
   @IsNotEmpty()
   projectId: string;
+
+  @IsOptional()
+  @IsUUID()
+  @UserExists({ message: 'Assignee does not exist' })
+  assigneeId?: string;
+
+  @IsOptional()
+  @IsDateString()
+  dueDate?: string;
 }
