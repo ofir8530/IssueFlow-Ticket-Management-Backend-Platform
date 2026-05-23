@@ -8,9 +8,13 @@ import { UsersModule } from '../users/users.module';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RolesGuard } from './guards/roles.guard';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { RevokedToken } from './entities/revoked-token.entity';
+import { TokenBlacklistService } from './token-blacklist.service';
 
 @Module({
   imports: [
+    TypeOrmModule.forFeature([RevokedToken]),
     UsersModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
@@ -25,7 +29,7 @@ import { RolesGuard } from './guards/roles.guard';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, JwtAuthGuard, RolesGuard],
+  providers: [AuthService, JwtStrategy, JwtAuthGuard, RolesGuard, TokenBlacklistService],
   exports: [AuthService, JwtModule, JwtAuthGuard, RolesGuard],
 })
 export class AuthModule {}

@@ -12,6 +12,7 @@ import { AuthModule } from './auth/auth.module';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
+import { RevokedToken } from './auth/entities/revoked-token.entity';
 
 @Module({
   imports: [
@@ -33,12 +34,13 @@ import { RolesGuard } from './auth/guards/roles.guard';
       inject: [ConfigService],
       useFactory: (config: ConfigService) => {
         const dbType = config.get<string>('DB_TYPE');
+        const entities = [User, Project, Ticket, RevokedToken];
 
         if (dbType === 'sqlite') {
           return {
             type: 'sqlite',
             database: 'issueflow.sqlite',
-            entities: [User, Project, Ticket],
+            entities: entities,
             synchronize: true,
           };
         }
@@ -50,7 +52,7 @@ import { RolesGuard } from './auth/guards/roles.guard';
           username: config.get<string>('DB_USER'),
           password: config.get<string>('DB_PASS'),
           database: config.get<string>('DB_NAME'),
-          entities: [User, Project, Ticket],
+          entities: entities,
           synchronize: true,
         };
       },
