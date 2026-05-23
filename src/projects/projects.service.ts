@@ -37,6 +37,12 @@ export class ProjectsService {
 
   async remove(id: string) {
     const project = await this.findOne(id);
-    return this.repo.remove(project);
+    return this.repo.softRemove(project); 
+  }
+
+  async restore(id: string) {
+    const project = await this.repo.findOne({where: { id },withDeleted: true,});
+    if (!project) throw new NotFoundException(`Project ${id} not found`);
+    return await this.repo.restore(id);
   }
 }

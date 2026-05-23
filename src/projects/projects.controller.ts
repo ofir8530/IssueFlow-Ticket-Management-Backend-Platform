@@ -2,7 +2,8 @@ import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@n
 import { ProjectsService } from './projects.service';
 import { UpdateProjectDto } from './dto/UpdateProjectDto';
 import { CreateProjectDto } from './dto/create-project.dto';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { Roles } from '../auth/decorators/roles.decorator'; 
+import { UserRole } from '../users/entities/user.entity';
 
 @Controller('projects')
 export class ProjectsController {
@@ -13,4 +14,9 @@ export class ProjectsController {
   @Get(':id') findOne(@Param('id') id: string) { return this.service.findOne(id); }
   @Patch(':id') update(@Param('id') id: string, @Body() dto: UpdateProjectDto) { return this.service.update(id, dto); }
   @Delete(':id') remove(@Param('id') id: string) { return this.service.remove(id); }
+  @Post(':id/restore')
+  @Roles(UserRole.ADMIN) 
+  restore(@Param('id') id: string) {
+    return this.service.restore(id);
+  }
 }
