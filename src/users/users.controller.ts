@@ -1,7 +1,7 @@
 // src/users/users.controller.ts
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Delete } from '@nestjs/common';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { Public } from '../auth/decorators/public.decorator';
 
@@ -22,14 +22,17 @@ export class UsersController {
   }
 
   @Get(':id')
-   findOne(@Param('id') id: string) {
-     return this.usersService.findOne(id); 
-    }
+  findOne(@Param('id') id: string) {
+    return this.usersService.findOne(id); 
+  }
 
-  @Patch(':id') 
-  update(@Param('id') id: string, @Body() dto: UpdateUserDto) {
-     return this.usersService.update(id, dto); 
-    }
+  @Post('update/:userId')
+  update(
+    @Param('userId') userId: string,
+    @Body() dto: UpdateUserDto,
+  ) {
+    return this.usersService.update(userId, dto);
+  }
 
   @Delete(':id')
   remove(@Param('id') id: string) {
