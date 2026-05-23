@@ -31,6 +31,9 @@ export class Ticket {
   @Column()
   projectId: string;
 
+  @Column({ nullable: true })
+  assigneeId: string | null;
+
   @ManyToOne(() => Project, (project) => project.tickets, {
     onDelete: 'CASCADE',
   })

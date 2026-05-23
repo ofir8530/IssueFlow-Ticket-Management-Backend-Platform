@@ -4,12 +4,19 @@ import { Repository } from 'typeorm';
 import { Project } from './entities/project.entity';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/UpdateProjectDto';
+import { Ticket, TicketStatus } from '../tickets/entities/ticket.entity';
 
+export interface ProjectWorkloadRow {
+  userId: string;
+  username: string;
+  openTicketCount: number;
+}
 
 @Injectable()
 export class ProjectsService {
   constructor(
     @InjectRepository(Project) private repo: Repository<Project>,
+    @InjectRepository(Ticket) private ticketsRepo: Repository<Ticket>,
   ) {}
 
   create(dto: CreateProjectDto) {
@@ -18,6 +25,40 @@ export class ProjectsService {
 
   findAll() {
     return this.repo.find();
+  }
+
+  findDeleted() {
+    return this.repo
+      .createQueryBuilder('project')
+      .withDeleted()
+      .where('project.deletedAt IS NOT NULL')
+      .getMany();
+  }
+
+  async getWorkload(projectId: string): Promise<ProjectWorkloadRow[]> {
+    const projectExists = await this.exists(projectId);
+    if (!projectExists) {
+      throw new NotFoundException(`Project ${projectId} not found`);
+    }
+
+    const rows = await this.ticketsRepo
+      .createQueryBuilder('ticket')
+      .innerJoin('users', 'user', 'user.id = ticket.assigneeId')
+      .select('ticket.assigneeId', 'userId')
+      .addSelect('user.username', 'username')
+      .addSelect('COUNT(ticket.id)', 'openTicketCount')
+      .where('ticket.projectId = :projectId', { projectId })
+      .andWhere('ticket.status != :done', { done: TicketStatus.DONE })
+      .andWhere('ticket.assigneeId IS NOT NULL')
+      .groupBy('ticket.assigneeId')
+      .addGroupBy('user.username')
+      .getRawMany<{ userId: string; username: string; openTicketCount: string }>();
+
+    return rows.map((row) => ({
+      userId: row.userId,
+      username: row.username,
+      openTicketCount: Number(row.openTicketCount),
+    }));
   }
 
   async findOne(id: string) {
